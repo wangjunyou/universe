@@ -1,4 +1,4 @@
-package wjy.com.universe;
+package com.wjy.universe;
 
 import java.util.ArrayList;
 

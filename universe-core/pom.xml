@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-<!--    <groupId>com.wjy.universe</groupId>-->
+<!--    <groupId>com.com.wjy.universe</groupId>-->
     <artifactId>universe-core</artifactId>
     <name>Universe : Core</name>
 
