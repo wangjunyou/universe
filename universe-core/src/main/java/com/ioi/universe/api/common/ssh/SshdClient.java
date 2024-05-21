@@ -1,6 +1,5 @@
 package com.ioi.universe.api.common.ssh;
 
-import java.io.InputStream;
 import java.nio.file.Path;
 import java.time.Duration;
 
@@ -13,10 +12,10 @@ public interface SshdClient {
     public boolean closeSession();
     public boolean openSftpFileSystem();
     public boolean closeSftpFileSystem();
-    public InputStream exec(String command);
-    public InputStream exec(String command, Duration duration);
+    public SshdFutre exec(String command);
+    public SshdFutre exec(String command, Duration duration);
     public boolean createDir(String path);
-    public boolean deleteDir(String path);
+    public boolean deleteFileOrDir(String path);
     public boolean download(String remotePath, String localPath);
     public boolean upload(String localPath, String remotePath);
 

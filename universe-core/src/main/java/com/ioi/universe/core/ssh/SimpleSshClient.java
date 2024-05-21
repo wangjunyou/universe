@@ -1,8 +1,10 @@
 package com.ioi.universe.core.ssh;
 
 import com.ioi.universe.api.common.ssh.SshdClient;
+import com.ioi.universe.api.common.ssh.SshdFutre;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelExec;
+import org.apache.sshd.client.channel.ClientChannelEvent;
 import org.apache.sshd.client.session.ClientSession;
 import org.apache.sshd.common.keyprovider.FileKeyPairProvider;
 import org.apache.sshd.sftp.client.SftpClientFactory;
@@ -16,12 +18,43 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Optional;
+
+import static java.util.Objects.requireNonNull;
+
+/**
+ * <blockquote><pre>
+ * SimpleSshClient simpleSshClient = new SimpleSshClient();
+ * --password
+ * simpleSshClient.createSession("userName", "password", "127.0.0.1", 22);
+ * --pair
+ * simpleSshClient.createSession("userName", Path.of("/home/universe/.ssh/", "id_rsa"), "127.0.0.1", 22);
+ *
+ * --ssh
+ * SshdFutre futre = simpleSshClient.exec("rm -rf /home/universe/xxx");
+ * InputStream inputStream = futre.getInputStream();
+ * System.out.println(new String(inputStream.readAllBytes()));
+ * System.out.println("exitStatus:" + futre.exitStatus());
+ * futre.close();
+ *
+ * --sftp
+ * simpleSshClient.openSftpFileSystem();
+ * simpleSshClient.download("remotePath", "localPath");
+ * simpleSshClient.upload("localPath", "remotePath");
+ * simpleSshClient.deleteFileOrDir("remotePath");
+ * simpleSshClient.createDir("remotePath");
+ *
+ * //simpleSshClient.closeSftpFileSystem();
+ * //simpleSshClient.closeSession();
+ * simpleSshClient.close();
+ */
 
 public class SimpleSshClient implements SshdClient, Closeable {
 
     public static final Logger LOG = LoggerFactory.getLogger(SimpleSshClient.class);
 
-    public static final Duration DEFAULT_TIME_OUT = Duration.ofMinutes(1L);
+    public static final Duration DEFAULT_TIME_OUT = Duration.ofSeconds(2L);
     public static SshClient DEFAULT_CLIENT = SshClient.setUpDefaultClient();
     public ClientSession clientSession;
     public SftpFileSystem sftpFileSystem;
@@ -93,6 +126,7 @@ public class SimpleSshClient implements SshdClient, Closeable {
 
     @Override
     public boolean openSftpFileSystem() {
+        requireNonNull(this.clientSession, "ClientSession not create");
         try {
             this.sftpFileSystem = SftpClientFactory.instance().createSftpFileSystem(this.clientSession);
         } catch (IOException e) {
@@ -114,25 +148,29 @@ public class SimpleSshClient implements SshdClient, Closeable {
     }
 
     @Override
-    public InputStream exec(String command) {
+    public SshdFutre exec(String command) {
         return exec(command, DEFAULT_TIME_OUT);
     }
 
     @Override
-    public InputStream exec(String command, Duration duration) {
+    public SshdFutre exec(String command, Duration duration) {
+        requireNonNull(this.clientSession, "ClientSession not create");
         try {
-            ChannelExec execChannel = this.clientSession.createExecChannel(command);
-            execChannel.setRedirectErrorStream(true);
-            execChannel.open().verify(duration);
-            return execChannel.getInvertedOut();
+            ChannelExec channelExec = this.clientSession.createExecChannel(command);
+            channelExec.setRedirectErrorStream(true);
+            channelExec.open().verify(duration);
+            channelExec.waitFor(EnumSet.of(ClientChannelEvent.CLOSED), duration);
+            return SimpleSshdFutre.of(Optional.of(channelExec));
         } catch (IOException e) {
             LOG.error("Exec {} failed.", command, e);
-            return null;
+            return SimpleSshdFutre.of(Optional.empty());
         }
     }
 
     @Override
     public boolean createDir(String path) {
+        requireNonNull(this.clientSession, "ClientSession not create");
+        requireNonNull(this.sftpFileSystem, "SftpFileSystem not open");
         SftpPath remotePath = this.sftpFileSystem.getDefaultDir().resolve(path);
         if (!Files.exists(remotePath)) {
             try {
@@ -146,18 +184,17 @@ public class SimpleSshClient implements SshdClient, Closeable {
     }
 
     @Override
-    public boolean deleteDir(String path) {
-        SftpPath remotePath = this.sftpFileSystem.getDefaultDir().resolve(path);
-        try {
-            return Files.deleteIfExists(remotePath);
-        } catch (IOException e) {
-            LOG.error("deleteDir {} failed.", path);
-            return false;
-        }
+    public boolean deleteFileOrDir(String path) {
+        SshdFutre futre = exec("rm -rf " + path);
+        int exitStatus = futre.exitStatus();
+        futre.close();
+        return exitStatus == 1 ? false : true;
     }
 
     @Override
     public boolean download(String remotePath, String localPath) {
+        requireNonNull(this.clientSession, "ClientSession not create");
+        requireNonNull(this.sftpFileSystem, "SftpFileSystem not open");
         SftpPath srcPath = this.sftpFileSystem.getDefaultDir().resolve(remotePath);
         Path destPath = new File(localPath).toPath();
         try {
@@ -171,6 +208,8 @@ public class SimpleSshClient implements SshdClient, Closeable {
 
     @Override
     public boolean upload(String localPath, String remotePath) {
+        requireNonNull(this.clientSession, "ClientSession not create");
+        requireNonNull(this.sftpFileSystem, "SftpFileSystem not open");
         Path srcPath = new File(localPath).toPath();
         SftpPath destPath = this.sftpFileSystem.getDefaultDir().resolve(remotePath);
         try {
