@@ -1,6 +1,6 @@
 package com.ioi.universe.core.ssh;
 
-import com.ioi.universe.api.common.ssh.SshdFutre;
+import com.ioi.universe.api.common.ssh.SshdProcess;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,20 +60,20 @@ public class SimpleSshClientTest {
         boolean b = simpleSshClient.openSftpFileSystem();
         System.out.println("b:" + b);
         for (int ii = 0; ii < 4; ii++) {
-            SshdFutre futre1 = simpleSshClient.exec("rm -rf /home/hadoop/soft/wjy/DDP-1.1.1");
-            InputStream exec1 = futre1.getInputStream();
+            SshdProcess process1 = simpleSshClient.exec("rm -rf /home/hadoop/soft/wjy/DDP-1.1.1");
+            InputStream exec1 = process1.getInputStream();
             System.out.println(new String(exec1.readAllBytes()));
-            System.out.println("exitStatus:" + futre1.exitStatus());
-            futre1.close();
-            SshdFutre futre2 = simpleSshClient.exec("tar -zxvf /home/hadoop/soft/wjy/ddp-1.1.1.tar.gz -C /home/hadoop/soft/wjy/");
-            InputStream exec2 = futre2.getInputStream();
+            System.out.println("exitStatus:" + process1.exitStatus());
+            process1.close();
+            SshdProcess process2 = simpleSshClient.exec("tar -zxvf /home/hadoop/soft/wjy/ddp-1.1.1.tar.gz -C /home/hadoop/soft/wjy/");
+            InputStream exec2 = process2.getInputStream();
             byte[] bt = new byte[1024];
             int i;
             while ((i = exec2.read(bt)) != -1) {
                 System.out.print(new String(bt, 0, i));
             }
-            System.out.println("exitStatus:" + futre2.exitStatus());
-            futre2.close();
+            System.out.println("exitStatus:" + process2.exitStatus());
+            process2.close();
         }
     }
 
@@ -83,23 +83,23 @@ public class SimpleSshClientTest {
 //        System.out.println("b:" + b);
 //        boolean dir = simpleSshClient.createDir("/home/hadoop/soft/wjy");
 //        System.out.println("dir:" + dir);
-        SshdFutre exec = simpleSshClient.exec("ls /home/hadoop/soft/wjy/", Duration.ofMillis(1000L));
-        System.out.println(exec.exitStatus());
-        InputStream inputStream = exec.getInputStream();
+        SshdProcess process = simpleSshClient.exec("ls /home/hadoop/soft/wjy/", Duration.ofMillis(1000L));
+        System.out.println(process.exitStatus());
+        InputStream inputStream = process.getInputStream();
         System.out.println(new String(inputStream.readAllBytes()));
-        exec.close();
-        SshdFutre exec1 = simpleSshClient.exec("tar -zxvf /home/hadoop/soft/wjy/ddp-1.1.1.tar.gz");
-        InputStream inputStream1 = exec1.getInputStream();
+        process.close();
+        SshdProcess process1 = simpleSshClient.exec("tar -zxvf /home/hadoop/soft/wjy/ddp-1.1.1.tar.gz -C /home/hadoop/soft/wjy/");
+        InputStream inputStream1 = process1.getInputStream();
         byte[] bt = new byte[1024];
         int i;
         while ((i = inputStream1.read(bt)) != -1) {
             System.out.print(new String(bt, 0, i));
         }
-        System.out.println(exec1.exitStatus());
-        exec1.close();
-        SshdFutre exec2 = simpleSshClient.exec("rm -rf /home/hadoop/soft/wjy/DDP-1.1.1");
-        System.out.println(exec2.exitStatus());
-        exec2.close();
+        System.out.println(process1.exitStatus());
+        process1.close();
+        SshdProcess process2 = simpleSshClient.exec("rm -rf /home/hadoop/soft/wjy/DDP-1.1.1");
+        System.out.println(process2.exitStatus());
+        process2.close();
     }
 
     @AfterEach

@@ -1,7 +1,7 @@
 package com.ioi.universe.core.ssh;
 
 import com.ioi.universe.api.common.ssh.SshdClient;
-import com.ioi.universe.api.common.ssh.SshdFutre;
+import com.ioi.universe.api.common.ssh.SshdProcess;
 import org.apache.sshd.client.SshClient;
 import org.apache.sshd.client.channel.ChannelExec;
 import org.apache.sshd.client.channel.ClientChannelEvent;
@@ -32,11 +32,11 @@ import static java.util.Objects.requireNonNull;
  * simpleSshClient.createSession("userName", Path.of("/home/universe/.ssh/", "id_rsa"), "127.0.0.1", 22);
  *
  * --ssh
- * SshdFutre futre = simpleSshClient.exec("rm -rf /home/universe/xxx");
- * InputStream inputStream = futre.getInputStream();
+ * SshdProcess process = simpleSshClient.exec("rm -rf /home/universe/xxx");
+ * InputStream inputStream = process.getInputStream();
  * System.out.println(new String(inputStream.readAllBytes()));
- * System.out.println("exitStatus:" + futre.exitStatus());
- * futre.close();
+ * System.out.println("exitStatus:" + process.exitStatus());
+ * process.close();
  *
  * --sftp
  * simpleSshClient.openSftpFileSystem();
@@ -148,22 +148,22 @@ public class SimpleSshClient implements SshdClient, Closeable {
     }
 
     @Override
-    public SshdFutre exec(String command) {
+    public SshdProcess exec(String command) {
         return exec(command, DEFAULT_TIME_OUT);
     }
 
     @Override
-    public SshdFutre exec(String command, Duration duration) {
+    public SshdProcess exec(String command, Duration duration) {
         requireNonNull(this.clientSession, "ClientSession not create");
         try {
             ChannelExec channelExec = this.clientSession.createExecChannel(command);
             channelExec.setRedirectErrorStream(true);
             channelExec.open().verify(duration);
             channelExec.waitFor(EnumSet.of(ClientChannelEvent.CLOSED), duration);
-            return SimpleSshdFutre.of(Optional.of(channelExec));
+            return SimpleSshdProcess.of(Optional.of(channelExec));
         } catch (IOException e) {
             LOG.error("Exec {} failed.", command, e);
-            return SimpleSshdFutre.of(Optional.empty());
+            return SimpleSshdProcess.of(Optional.empty());
         }
     }
 
@@ -185,7 +185,7 @@ public class SimpleSshClient implements SshdClient, Closeable {
 
     @Override
     public boolean deleteFileOrDir(String path) {
-        SshdFutre futre = exec("rm -rf " + path);
+        SshdProcess futre = exec("rm -rf " + path);
         int exitStatus = futre.exitStatus();
         futre.close();
         return exitStatus == 1 ? false : true;

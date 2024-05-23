@@ -12,8 +12,8 @@ public interface SshdClient {
     public boolean closeSession();
     public boolean openSftpFileSystem();
     public boolean closeSftpFileSystem();
-    public SshdFutre exec(String command);
-    public SshdFutre exec(String command, Duration duration);
+    public SshdProcess exec(String command);
+    public SshdProcess exec(String command, Duration duration);
     public boolean createDir(String path);
     public boolean deleteFileOrDir(String path);
     public boolean download(String remotePath, String localPath);
